@@ -147,3 +147,17 @@ async def chat_endpoint(request: Request):
             "response": "I'm having trouble connecting to the AI service. Please try again later.",
             "history": recent_history
         }
+
+# Only run this if the file is executed directly (not imported)
+if __name__ == "__main__":
+    import uvicorn
+    # Get port from environment variable or default to 8001
+    port = int(os.getenv("PORT", 8001))
+    # Run the server
+    uvicorn.run(
+        "app:app",
+        host="0.0.0.0",
+        port=port,
+        reload=True,
+        log_level="info"
+    )
