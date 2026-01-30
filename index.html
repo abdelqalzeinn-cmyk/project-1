@@ -1,0 +1,462 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cascade AI Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+    <!-- Cascade AI Scripts -->
+    <script src="/static/js/cohere-client.js"></script>
+</head>
+<body class="bg-slate-950">
+    <div id="app" class="h-screen flex">
+        <!-- Sidebar -->
+        <div id="sidebar" class="w-72 h-full flex flex-col border-r bg-slate-900 border-slate-800">
+            <!-- Header -->
+            <div class="p-5 border-b border-slate-800">
+                <div class="flex items-center gap-3">
+                    <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                        <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="font-semibold text-lg text-white">Cascade AI</h1>
+                        <div class="h-4"></div> <!-- Spacer to maintain layout -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Channels List -->
+            <div class="flex-1 p-3 overflow-y-auto scrollbar-hide">
+                <div id="channels-list" class="space-y-1.5 flex flex-col"></div>
+            </div>
+
+            <!-- Bottom Buttons -->
+            <div class="p-4 border-t border-slate-800 space-y-2">
+                <button onclick="createNewChannel()" class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl h-11 flex items-center justify-center gap-2 font-medium">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    New Channel
+                </button>
+                <button onclick="openSettings()" class="w-full text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl h-11 flex items-center justify-center gap-2 font-medium transition-colors">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    Settings
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="flex-1 flex flex-col h-full">
+            <!-- Chat Header -->
+            <div id="chat-header" class="h-16 flex items-center px-6 border-b border-slate-800 bg-slate-900/50 hidden">
+                <h2 id="channel-title" class="font-semibold text-lg text-white"></h2>
+            </div>
+
+            <!-- Messages Area -->
+            <div id="messages-area" class="flex-1 p-6 overflow-y-auto scrollbar-hide">
+                <div id="empty-state" class="flex-1 flex items-center justify-center h-full">
+                    <div class="text-center max-w-md">
+                        <div class="relative inline-block mb-6">
+                            <div class="h-20 w-20 rounded-2xl bg-slate-800 flex items-center justify-center">
+                                <svg class="h-10 w-10 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                                </svg>
+                            </div>
+                            <div class="absolute -top-2 -right-2 h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                                <svg class="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <h2 class="text-2xl font-semibold mb-2 text-white">No channel selected</h2>
+                        <p class="text-sm leading-relaxed text-slate-400">Create a new channel or select an existing one to start chatting.</p>
+                    </div>
+                </div>
+                <div id="messages-list" class="space-y-6 max-w-3xl mx-auto hidden"></div>
+            </div>
+
+            <!-- Input Area -->
+            <div id="input-area" class="max-w-3xl mx-auto w-full hidden">
+                <form onsubmit="sendMessage(event)" class="p-4 border-t border-slate-800 bg-slate-900/50">
+                    <div class="flex items-end gap-3 p-2 rounded-2xl border bg-slate-800 border-slate-700 focus-within:border-indigo-500/50 transition-colors">
+                        <textarea id="message-input" placeholder="Type your message..." rows="1" class="flex-1 min-h-[44px] max-h-32 resize-none border-0 bg-transparent text-white placeholder:text-slate-500 focus:outline-none p-2"></textarea>
+                        <button type="submit" class="h-10 w-10 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 flex items-center justify-center">
+                            <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-slate-900 rounded-2xl p-6 w-full max-w-md mx-4">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold text-white">Settings</h2>
+                <button onclick="closeSettings()" class="text-slate-400 hover:text-white">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Theme -->
+            <div class="mb-6">
+                <label class="text-sm font-medium text-slate-300 mb-3 block">Theme</label>
+                <div class="flex gap-3">
+                    <button onclick="setTheme('light')" class="flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-slate-700 hover:border-slate-600 transition-all theme-btn" data-theme="light">
+                        <svg class="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        </svg>
+                        <span class="text-sm font-medium text-white">Light</span>
+                    </button>
+                    <button onclick="setTheme('dark')" class="flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-indigo-500 bg-indigo-500/10 transition-all theme-btn" data-theme="dark">
+                        <svg class="h-5 w-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                        </svg>
+                        <span class="text-sm font-medium text-white">Dark</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- User Color -->
+            <div class="mb-6">
+                <label class="text-sm font-medium text-slate-300 mb-3 block">Your Message Color</label>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="setUserColor('#6366f1')" class="h-10 w-10 rounded-xl bg-indigo-500 ring-2 ring-offset-2 ring-indigo-500 ring-offset-slate-900 color-btn" data-color="#6366f1"></button>
+                    <button onclick="setUserColor('#a855f7')" class="h-10 w-10 rounded-xl bg-purple-500 hover:scale-110 transition-transform color-btn" data-color="#a855f7"></button>
+                    <button onclick="setUserColor('#ec4899')" class="h-10 w-10 rounded-xl bg-pink-500 hover:scale-110 transition-transform color-btn" data-color="#ec4899"></button>
+                    <button onclick="setUserColor('#3b82f6')" class="h-10 w-10 rounded-xl bg-blue-500 hover:scale-110 transition-transform color-btn" data-color="#3b82f6"></button>
+                    <button onclick="setUserColor('#14b8a6')" class="h-10 w-10 rounded-xl bg-teal-500 hover:scale-110 transition-transform color-btn" data-color="#14b8a6"></button>
+                    <button onclick="setUserColor('#22c55e')" class="h-10 w-10 rounded-xl bg-green-500 hover:scale-110 transition-transform color-btn" data-color="#22c55e"></button>
+                    <button onclick="setUserColor('#f97316')" class="h-10 w-10 rounded-xl bg-orange-500 hover:scale-110 transition-transform color-btn" data-color="#f97316"></button>
+                    <button onclick="setUserColor('#ef4444')" class="h-10 w-10 rounded-xl bg-red-500 hover:scale-110 transition-transform color-btn" data-color="#ef4444"></button>
+                    <input type="color" id="user-color-picker" value="#6366f1" onchange="setUserColor(this.value)" class="h-10 w-10 rounded-xl cursor-pointer">
+                </div>
+            </div>
+
+            <!-- AI Color -->
+            <div class="mb-6">
+                <label class="text-sm font-medium text-slate-300 mb-3 block">AI Message Color</label>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="setAiColor('#1e293b')" class="h-10 w-10 rounded-xl bg-slate-800 border border-slate-600 ring-2 ring-offset-2 ring-indigo-500 ring-offset-slate-900 ai-color-btn" data-color="#1e293b"></button>
+                    <button onclick="setAiColor('#27272a')" class="h-10 w-10 rounded-xl bg-zinc-800 border border-slate-600 hover:scale-110 transition-transform ai-color-btn" data-color="#27272a"></button>
+                    <button onclick="setAiColor('#312e81')" class="h-10 w-10 rounded-xl bg-indigo-900 border border-slate-600 hover:scale-110 transition-transform ai-color-btn" data-color="#312e81"></button>
+                    <button onclick="setAiColor('#3b0764')" class="h-10 w-10 rounded-xl bg-purple-950 border border-slate-600 hover:scale-110 transition-transform ai-color-btn" data-color="#3b0764"></button>
+                    <button onclick="setAiColor('#064e3b')" class="h-10 w-10 rounded-xl bg-emerald-900 border border-slate-600 hover:scale-110 transition-transform ai-color-btn" data-color="#064e3b"></button>
+                    <input type="color" id="ai-color-picker" value="#1e293b" onchange="setAiColor(this.value)" class="h-10 w-10 rounded-xl cursor-pointer">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Channel Modal -->
+    <div id="new-channel-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-slate-900 rounded-2xl p-6 w-full max-w-md mx-4">
+            <h2 class="text-xl font-semibold text-white mb-4">Create New Channel</h2>
+            <input type="text" id="new-channel-input" placeholder="Channel name..." class="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 mb-4">
+            <div class="flex gap-3">
+                <button onclick="closeNewChannelModal()" class="flex-1 py-3 rounded-xl border border-slate-700 hover:bg-slate-800 text-white font-medium transition-colors">Cancel</button>
+                <button onclick="confirmNewChannel()" class="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-medium">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let state = {
+            channels: [],
+            activeChannel: null,
+            settings: {
+                theme: 'dark',
+                userBubbleColor: '#6366f1',
+                aiBubbleColor: '#1e293b'
+            }
+        };
+
+        // Load from localStorage
+        function loadState() {
+            const saved = localStorage.getItem('novaChatState');
+            if (saved) {
+                state = JSON.parse(saved);
+                renderChannels();
+            }
+        }
+
+        // Save to localStorage
+        function saveState() {
+            localStorage.setItem('novaChatState', JSON.stringify(state));
+        }
+
+        // Render channels list
+        function renderChannels() {
+            const list = document.getElementById('channels-list');
+            list.innerHTML = '';
+            
+            const sorted = [...state.channels].sort((a, b) => new Date(a.created) - new Date(b.created));
+            
+            sorted.forEach(channel => {
+                const isActive = state.activeChannel?.id === channel.id;
+                const btn = document.createElement('button');
+                btn.className = `w-full text-left px-4 py-3 rounded-xl transition-all duration-200 ${isActive ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'}`;
+                btn.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="h-8 w-8 rounded-lg flex items-center justify-center ${isActive ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-700 text-slate-500'}">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                            </svg>
+                        </div>
+                        <span class="font-medium truncate">${channel.name}</span>
+                    </div>
+                `;
+                btn.onclick = () => selectChannel(channel);
+                list.appendChild(btn);
+            });
+        }
+
+        // Select channel
+        function selectChannel(channel) {
+            state.activeChannel = channel;
+            saveState();
+            renderChannels();
+            renderMessages();
+            
+            document.getElementById('chat-header').classList.remove('hidden');
+            document.getElementById('channel-title').textContent = channel.name;
+            document.getElementById('input-area').classList.remove('hidden');
+            document.getElementById('empty-state').classList.add('hidden');
+            document.getElementById('messages-list').classList.remove('hidden');
+        }
+
+        // Render messages
+        function renderMessages() {
+            const list = document.getElementById('messages-list');
+            list.innerHTML = '';
+            
+            if (!state.activeChannel?.messages?.length) {
+                list.innerHTML = `
+                    <div class="flex items-center justify-center h-64">
+                        <div class="text-center">
+                            <h3 class="text-xl font-semibold text-white mb-2">Start a conversation</h3>
+                            <p class="text-slate-400 text-sm">Send a message to begin chatting with Nova AI.</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            state.activeChannel.messages.forEach(msg => {
+                const isUser = msg.role === 'user';
+                const div = document.createElement('div');
+                div.className = `flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`;
+                
+                const time = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                
+                div.innerHTML = `
+                    ${!isUser ? `
+                        <div class="h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0" style="background-color: ${state.settings.aiBubbleColor}30">
+                            <svg class="h-5 w-5" style="color: ${state.settings.aiBubbleColor === '#1e293b' ? '#94a3b8' : state.settings.aiBubbleColor}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                            </svg>
+                        </div>
+                    ` : ''}
+                    <div class="max-w-[75%]">
+                        <div class="rounded-2xl px-4 py-3 ${isUser ? 'rounded-br-md' : 'rounded-bl-md'}" style="background-color: ${isUser ? state.settings.userBubbleColor : state.settings.aiBubbleColor}; color: ${isUser ? '#ffffff' : '#e2e8f0'}">
+                            <p class="text-sm leading-relaxed">${msg.content}</p>
+                        </div>
+                        <p class="text-xs mt-1.5 px-1 text-slate-500 ${isUser ? 'text-right' : 'text-left'}">${time}</p>
+                    </div>
+                    ${isUser ? `
+                        <div class="h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0" style="background-color: ${state.settings.userBubbleColor}">
+                            <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                            </svg>
+                        </div>
+                    ` : ''}
+                `;
+                list.appendChild(div);
+            });
+            
+            list.scrollTop = list.scrollHeight;
+        }
+
+        // Send message
+        async function sendMessage(e) {
+            e.preventDefault();
+            const input = document.getElementById('message-input');
+            const content = input.value.trim();
+            
+            if (!content || !state.activeChannel) return;
+            
+            // Add user message
+            if (!state.activeChannel.messages) state.activeChannel.messages = [];
+            state.activeChannel.messages.push({
+                role: 'user',
+                content,
+                timestamp: new Date().toISOString()
+            });
+            
+            // Clear input
+            input.value = '';
+            
+            // Update UI
+            renderMessages();
+            const messagesContainer = document.getElementById('messages-area');
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            // Show typing indicator
+            const typingId = 'typing-' + Date.now();
+            state.activeChannel.messages.push({
+                id: typingId,
+                role: 'assistant',
+                content: '...',
+                isTyping: true
+            });
+            renderMessages();
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            try {
+                // Get AI response
+                const response = await getCascadeResponse(state.activeChannel.messages);
+                
+                // Remove typing indicator
+                state.activeChannel.messages = state.activeChannel.messages.filter(m => m.id !== typingId);
+                
+                // Add AI response
+                state.activeChannel.messages.push({
+                    role: 'assistant',
+                    content: response,
+                    timestamp: new Date().toISOString()
+                });
+            } catch (error) {
+                console.error('Error getting AI response:', error);
+                // Remove typing indicator
+                state.activeChannel.messages = state.activeChannel.messages.filter(m => m.id !== typingId);
+                
+                // Add error message
+                state.activeChannel.messages.push({
+                    role: 'assistant',
+                    content: "I'm sorry, I encountered an error. Please try again.",
+                    timestamp: new Date().toISOString()
+                });
+            }
+
+            // Update UI
+            renderMessages();
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            saveState();
+        }
+
+        // Create new channel
+        function createNewChannel() {
+            document.getElementById('new-channel-modal').classList.remove('hidden');
+            document.getElementById('new-channel-input').focus();
+        }
+
+        function closeNewChannelModal() {
+            document.getElementById('new-channel-modal').classList.add('hidden');
+            document.getElementById('new-channel-input').value = '';
+        }
+
+        function confirmNewChannel() {
+            const name = document.getElementById('new-channel-input').value.trim();
+            if (!name) return;
+            
+            const channel = {
+                id: Date.now().toString(),
+                name,
+                messages: [],
+                created: new Date().toISOString()
+            };
+            
+            state.channels.push(channel);
+            saveState();
+            renderChannels();
+            selectChannel(channel);
+            closeNewChannelModal();
+        }
+
+        // Settings
+        function openSettings() {
+            document.getElementById('settings-modal').classList.remove('hidden');
+        }
+
+        function closeSettings() {
+            document.getElementById('settings-modal').classList.add('hidden');
+        }
+
+        function setTheme(theme) {
+            state.settings.theme = theme;
+            saveState();
+            document.querySelectorAll('.theme-btn').forEach(btn => {
+                if (btn.dataset.theme === theme) {
+                    btn.className = 'flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-indigo-500 bg-indigo-500/10 transition-all theme-btn';
+                    btn.querySelector('svg').className = 'h-5 w-5 text-indigo-500';
+                } else {
+                    btn.className = 'flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-slate-700 hover:border-slate-600 transition-all theme-btn';
+                    btn.querySelector('svg').className = 'h-5 w-5 text-slate-400';
+                }
+            });
+        }
+
+        function setUserColor(color) {
+            state.settings.userBubbleColor = color;
+            document.getElementById('user-color-picker').value = color;
+            saveState();
+            renderMessages();
+            
+            document.querySelectorAll('.color-btn').forEach(btn => {
+                if (btn.dataset.color === color) {
+                    btn.className = `h-10 w-10 rounded-xl ring-2 ring-offset-2 ring-indigo-500 ring-offset-slate-900 color-btn`;
+                } else {
+                    btn.className = `h-10 w-10 rounded-xl hover:scale-110 transition-transform color-btn`;
+                }
+                btn.style.backgroundColor = btn.dataset.color;
+            });
+        }
+
+        function setAiColor(color) {
+            state.settings.aiBubbleColor = color;
+            document.getElementById('ai-color-picker').value = color;
+            saveState();
+            renderMessages();
+            
+            document.querySelectorAll('.ai-color-btn').forEach(btn => {
+                if (btn.dataset.color === color) {
+                    btn.className = `h-10 w-10 rounded-xl border border-slate-600 ring-2 ring-offset-2 ring-indigo-500 ring-offset-slate-900 ai-color-btn`;
+                } else {
+                    btn.className = `h-10 w-10 rounded-xl border border-slate-600 hover:scale-110 transition-transform ai-color-btn`;
+                }
+            });
+        }
+
+        // Handle Enter key for new channel
+        document.getElementById('new-channel-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') confirmNewChannel();
+        });
+
+        // Auto-resize textarea
+        document.getElementById('message-input').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 128) + 'px';
+        });
+
+        // Initialize
+        loadState();
+    </script>
+</body>
+</html>
